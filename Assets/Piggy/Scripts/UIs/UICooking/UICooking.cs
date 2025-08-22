@@ -1,7 +1,9 @@
 using Spine.Unity;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using TMPro;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -51,7 +53,7 @@ public class UICooking : MonoBehaviour
         panel.SetActive(true);
 
         InitPanel();
-        InitButtons();
+        InitListeners();
         InitMenuPage();
         InitSpine();
     }
@@ -64,8 +66,8 @@ public class UICooking : MonoBehaviour
     private void InitPanel()
     {
         foodMenus = Database.GetAllFoods();
-        currentFoodMenus = Database.GetAllFoods();
-        currentFoodMenus.RemoveAt(0);
+        foodMenus.RemoveAt(0);
+        currentFoodMenus = foodMenus;
 
         currentPage = 1;
         maxPage = GetMaxPage(currentFoodMenus.Count);
@@ -73,7 +75,7 @@ public class UICooking : MonoBehaviour
         UpdateEnergy(PlayerManager.PlayerData.PlayerEnergy.CurrentEnergy, PlayerManager.PlayerData.PlayerEnergy.MaxEnergy);
     }
 
-    private void InitButtons()
+    private void InitListeners()
     {
         closeBtn.onClick.AddListener(OnClickCloseBtn);
 
@@ -81,6 +83,9 @@ public class UICooking : MonoBehaviour
         menuRightArrow.onClick.AddListener(OnClickRightArrow);
 
         cookingBtn.onClick.AddListener(OnClickCookingStart);
+
+        menuSearch.onValueChanged.AddListener(OnSearchValueChanged);
+        menuFilter.onValueChanged.AddListener(OnFilterValueChanged);
     }
 
     private void InitSpine()
@@ -110,7 +115,7 @@ public class UICooking : MonoBehaviour
     private void InitMenuPage()
     {
         CreatePageChildren();
-        SetPageSelected(1, true);
+        SetPageSelected(currentPage, true);
         SetActiveButton(menuLeftArrow, !(currentPage == 1));
         SetActiveButton(menuRightArrow, !(currentPage == maxPage));
 
@@ -132,7 +137,19 @@ public class UICooking : MonoBehaviour
 
     private void UpdatePageCholdren()
     {
-
+        for(int i = 0; i < pageParent.transform.childCount; i++)
+        {
+            UICookingPage uiPage = pageParent.transform.GetChild(i).gameObject.GetComponent<UICookingPage>();
+            if (i < maxPage)
+            {
+                uiPage.Show();
+                uiPage.PageDeselect();
+            }
+            else
+            {
+                uiPage.Hide();
+            }
+        }
     }
 
     private void SetPageSelected(int page, bool isSelect)
@@ -178,20 +195,20 @@ public class UICooking : MonoBehaviour
     {
         DeselectAllFoods();
 
-        int startIndex = ((page - 1) * 4) + 1;
+        int startIndex = ((page - 1) * 4);
 
         for(int i = 0; i < menuParent.transform.childCount; i++)
         {
             UICookingMenu food = menuParent.transform.GetChild(i).gameObject.GetComponent<UICookingMenu>();
             int index = startIndex + i;
 
-            if (index > foods.Count)
+            if (index >= foods.Count)
             {
                 food.Hide();
                 continue;
             }
 
-            food.SetMenu(index);
+            food.SetMenu(foods[index].Id);
             food.Show();
 
             if(i == 0)
@@ -228,12 +245,23 @@ public class UICooking : MonoBehaviour
         }
     }
 
-    private void UpdateSearch()
+    private void OnSearchValueChanged(string text)
     {
+        currentFoodMenus = foodMenus.Where(food => food.Name.StartsWith(text)).ToList();
 
+        currentPage = 1;
+        maxPage = GetMaxPage(currentFoodMenus.Count);
+
+        UpdatePageCholdren();
+        SetPageSelected(currentPage, true);
+
+        SetActiveButton(menuLeftArrow, !(currentPage == 1));
+        SetActiveButton(menuRightArrow, !(currentPage == maxPage));
+
+        UpdateMenuPage(currentPage, currentFoodMenus);
     }
 
-    private void UpdateFilter()
+    private void OnFilterValueChanged(int value)
     {
 
     }

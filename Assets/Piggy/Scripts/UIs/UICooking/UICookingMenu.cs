@@ -57,6 +57,8 @@ public class UICookingMenu : MonoBehaviour
         uiCooking.UpdateFoodItem(foodData);
 
         menuImageOutline.gameObject.SetActive(true);
+
+        Debug.Log($"Select food: {foodData.Id}");
     }
 
     public void DeselectFood()
