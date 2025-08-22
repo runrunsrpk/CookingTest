@@ -6,6 +6,7 @@ using TMPro;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
+using static System.Net.Mime.MediaTypeNames;
 
 public class UICooking : MonoBehaviour
 {
@@ -116,9 +117,7 @@ public class UICooking : MonoBehaviour
     {
         CreatePageChildren();
         SetPageSelected(currentPage, true);
-        SetActiveButton(menuLeftArrow, !(currentPage == 1));
-        SetActiveButton(menuRightArrow, !(currentPage == maxPage));
-
+        UpdateArrow();
         UpdateMenuPage(currentPage, currentFoodMenus);
     }
 
@@ -135,7 +134,7 @@ public class UICooking : MonoBehaviour
         }
     }
 
-    private void UpdatePageCholdren()
+    private void UpdatePageChildren()
     {
         for(int i = 0; i < pageParent.transform.childCount; i++)
         {
@@ -161,6 +160,12 @@ public class UICooking : MonoBehaviour
             uiPage.PageDeselect();
     }
 
+    private void UpdateArrow()
+    {
+        SetActiveButton(menuLeftArrow, !(currentPage == 1));
+        SetActiveButton(menuRightArrow, !(currentPage == maxPage));
+    }
+
     private void OnClickLeftArrow()
     {
         if (currentPage > 1)
@@ -170,9 +175,7 @@ public class UICooking : MonoBehaviour
             SetPageSelected(currentPage, true);
         }
 
-        SetActiveButton(menuLeftArrow, !(currentPage == 1));
-        SetActiveButton(menuRightArrow, !(currentPage == maxPage));
-
+        UpdateArrow();
         UpdateMenuPage(currentPage, currentFoodMenus);
     }
 
@@ -185,9 +188,7 @@ public class UICooking : MonoBehaviour
             SetPageSelected(currentPage, true);
         }
 
-        SetActiveButton(menuLeftArrow, !(currentPage == 1));
-        SetActiveButton(menuRightArrow, !(currentPage == maxPage));
-
+        UpdateArrow();
         UpdateMenuPage(currentPage, currentFoodMenus);
     }
 
@@ -252,18 +253,39 @@ public class UICooking : MonoBehaviour
         currentPage = 1;
         maxPage = GetMaxPage(currentFoodMenus.Count);
 
-        UpdatePageCholdren();
+        UpdatePageChildren();
         SetPageSelected(currentPage, true);
 
-        SetActiveButton(menuLeftArrow, !(currentPage == 1));
-        SetActiveButton(menuRightArrow, !(currentPage == maxPage));
-
+        UpdateArrow();
         UpdateMenuPage(currentPage, currentFoodMenus);
     }
 
     private void OnFilterValueChanged(int value)
     {
+        switch (value)
+        {
+            case 0:
+                currentFoodMenus = foodMenus;
+                break;
+            case 1:
+                currentFoodMenus = foodMenus.Where(food => food.Star == 3).ToList();
+                break;
+            case 2:
+                currentFoodMenus = foodMenus.Where(food => food.Star == 2).ToList();
+                break;
+            case 3:
+                currentFoodMenus = foodMenus.Where(food => food.Star == 1).ToList();
+                break;
+        }
 
+        currentPage = 1;
+        maxPage = GetMaxPage(currentFoodMenus.Count);
+
+        UpdatePageChildren();
+        SetPageSelected(currentPage, true);
+
+        UpdateArrow();
+        UpdateMenuPage(currentPage, currentFoodMenus);
     }
 
     #endregion
