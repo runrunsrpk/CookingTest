@@ -15,6 +15,8 @@ public class UICooking : MonoBehaviour
     [SerializeField] private TMP_InputField menuSearch;
     [SerializeField] private TMP_Dropdown menuFilter;
     [SerializeField] private GameObject menuParent;
+    [SerializeField] private GameObject pageParent;
+    [SerializeField] private GameObject pagePrefab;
     [SerializeField] private Button menuLeftArrow;
     [SerializeField] private Button menuRightArrow;
 
@@ -107,30 +109,69 @@ public class UICooking : MonoBehaviour
 
     private void InitMenuPage()
     {
+        CreatePageChildren();
+        SetPageSelected(1, true);
         SetActiveButton(menuLeftArrow, !(currentPage == 1));
         SetActiveButton(menuRightArrow, !(currentPage == maxPage));
 
         UpdateMenuPage(currentPage, currentFoodMenus);
     }
 
+    private void CreatePageChildren()
+    {
+        int pageCount = pageParent.transform.childCount;
+        if (pageCount < maxPage)
+        {
+            int amount = maxPage - pageCount;
+            for (int i = 0; i < amount; i++)
+            {
+                Instantiate(pagePrefab, pageParent.transform);
+            }
+        }
+    }
+
+    private void UpdatePageCholdren()
+    {
+
+    }
+
+    private void SetPageSelected(int page, bool isSelect)
+    {
+        UICookingPage uiPage = pageParent.transform.GetChild(page - 1).gameObject.GetComponent<UICookingPage>();
+        if (isSelect)
+            uiPage.PageSelect();
+        else
+            uiPage.PageDeselect();
+    }
+
     private void OnClickLeftArrow()
     {
         if (currentPage > 1)
         {
+            SetPageSelected(currentPage, false);
             currentPage--;
+            SetPageSelected(currentPage, true);
         }
 
         SetActiveButton(menuLeftArrow, !(currentPage == 1));
+        SetActiveButton(menuRightArrow, !(currentPage == maxPage));
+
+        UpdateMenuPage(currentPage, currentFoodMenus);
     }
 
     private void OnClickRightArrow()
     {
         if (currentPage < maxPage)
         {
+            SetPageSelected(currentPage, false);
             currentPage++;
+            SetPageSelected(currentPage, true);
         }
 
+        SetActiveButton(menuLeftArrow, !(currentPage == 1));
         SetActiveButton(menuRightArrow, !(currentPage == maxPage));
+
+        UpdateMenuPage(currentPage, currentFoodMenus);
     }
 
     private void UpdateMenuPage(int page, List<FoodSO> foods)
