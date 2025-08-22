@@ -20,21 +20,10 @@ public class UICookingItem : MonoBehaviour
         itemSprite = Database.GetItemIcon(id);
         itemRequire = require;
 
-        PlayerItem playerItem = PlayerManager.Instance.GetPlayerItemById(id);
-        playerItemAmount = (playerItem == null) ? 0 : playerItem.ItemAmount;
-
         itemImage.sprite = itemSprite;
         itemImage.SetNativeSize();
 
-        if(playerItemAmount == 0)
-        {
-            itemAmountText.text = $"<color=#FF0000>{playerItemAmount}</color>/{require}";
-        }
-        else
-        {
-            itemAmountText.text = $"{playerItemAmount}/{require}";
-        }
-        
+        UpdateItem();
     }
 
     public void Show()
@@ -47,8 +36,33 @@ public class UICookingItem : MonoBehaviour
         gameObject.SetActive(false);
     }
 
+    public int GetItemId()
+    {
+        return itemData.Id;
+    }
+
+    public int GetItemRequire()
+    {
+        return itemRequire;
+    }
+
     public bool IsItemEnough()
     {
         return playerItemAmount >= itemRequire;
+    }
+
+    public void UpdateItem()
+    {
+        PlayerItem playerItem = PlayerManager.Instance.GetPlayerItemById(itemData.Id);
+        playerItemAmount = (playerItem == null) ? 0 : playerItem.ItemAmount;
+
+        if (playerItemAmount == 0)
+        {
+            itemAmountText.text = $"<color=#FF0000>{playerItemAmount}</color>/{itemRequire}";
+        }
+        else
+        {
+            itemAmountText.text = $"{playerItemAmount}/{itemRequire}";
+        }
     }
 }

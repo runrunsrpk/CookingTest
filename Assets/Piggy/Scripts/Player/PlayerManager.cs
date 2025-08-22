@@ -40,4 +40,10 @@ public class PlayerManager : MonoBehaviour
     {
         return playerData.PlayerInventory.Items.FirstOrDefault(player => player.ItemID == id);
     }
+
+    public void SetPlayerItemById(int id, int amount)
+    {
+        PlayerItem playerItem = GetPlayerItemById(id);
+        playerItem.ItemAmount = amount;
+    }
 }

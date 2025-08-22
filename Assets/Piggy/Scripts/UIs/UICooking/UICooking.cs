@@ -1,3 +1,4 @@
+using Spine.Unity;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
@@ -26,11 +27,20 @@ public class UICooking : MonoBehaviour
     [SerializeField] private TMP_Text cookingTimer;
     [SerializeField] private Button cookingBtn;
 
+    [Header("CookingAnimation")]
+    [SerializeField] private SkeletonGraphic cookingAnimation;
+
+    [Header("CookingPopup")]
+    [SerializeField] private UICookingPopup cookingPopup;
+
+    private Spine.AnimationState cookingAnimationState;
+
     private int currentPage;
     private int maxPage;
 
     private List<FoodSO> foodMenus;
     private List<FoodSO> currentFoodMenus;
+    private FoodSO currentFood;
 
     public void Show()
     {
@@ -41,6 +51,7 @@ public class UICooking : MonoBehaviour
         InitPanel();
         InitButtons();
         InitMenuPage();
+        InitSpine();
     }
 
     public void Hide()
@@ -68,6 +79,12 @@ public class UICooking : MonoBehaviour
         menuRightArrow.onClick.AddListener(OnClickRightArrow);
 
         cookingBtn.onClick.AddListener(OnClickCookingStart);
+    }
+
+    private void InitSpine()
+    {
+        cookingAnimationState = cookingAnimation.AnimationState;
+        cookingAnimationState.SetAnimation(0, "idle", true);
     }
 
     #region CookingPanel
@@ -143,6 +160,8 @@ public class UICooking : MonoBehaviour
 
     public void UpdateFoodItem(FoodSO food)
     {
+        currentFood = food;
+
         for (int i = 0; i < itemParent.transform.childCount; i++)
         {
             UICookingItem foodItem = itemParent.transform.GetChild(i).gameObject.GetComponent<UICookingItem>();
@@ -190,7 +209,32 @@ public class UICooking : MonoBehaviour
 
     private bool IsEnergyEnough()
     {
-        return PlayerManager.PlayerData.PlayerEnergy.CurrentEnergy > 10;
+        return PlayerManager.PlayerData.PlayerEnergy.CurrentEnergy >= 10;
+    }
+
+    private void ReduecPlayerEnergy()
+    {
+        int energy = PlayerManager.PlayerData.PlayerEnergy.CurrentEnergy - 10;
+        PlayerManager.PlayerData.PlayerEnergy.CurrentEnergy = energy;
+        UpdateEnergy(energy, PlayerManager.PlayerData.PlayerEnergy.MaxEnergy);
+    }
+
+    private void ReducePlayerItems()
+    {
+
+        for (int i = 0; i < itemParent.transform.childCount; i++)
+        {
+            UICookingItem foodItem = itemParent.transform.GetChild(i).gameObject.GetComponent<UICookingItem>();
+
+            if (!foodItem.gameObject.activeSelf)
+                break;
+
+            int itemId = foodItem.GetItemId();
+            int itemAmount = PlayerManager.Instance.GetPlayerItemById(itemId).ItemAmount - foodItem.GetItemRequire();
+            PlayerManager.Instance.SetPlayerItemById(itemId, itemAmount);
+
+            foodItem.UpdateItem();
+        }
     }
 
     private void CheckCookingAllow()
@@ -225,9 +269,46 @@ public class UICooking : MonoBehaviour
 
     private void OnClickCookingStart()
     {
+        SetCookingBtn(false);
+
         //TODO: Play cooking animation
-        //TODO: Reduce energy
+        cookingAnimationState.SetAnimation(0, "idle-boiled", true);
+
+        //TODO: Reduce energy and items
+        ReduecPlayerEnergy();
+        ReducePlayerItems();
+
         //TODO: Start cooking timer
+        StartCoroutine(EnumCookingTime(currentFood.CookingTime));
+    }
+
+    private IEnumerator EnumCookingTime(int cookingTime)
+    {
+        while (cookingTime > 0)
+        {
+            int minutes = Mathf.FloorToInt(cookingTime / 60);
+            int seconds = Mathf.FloorToInt(cookingTime % 60);
+            cookingTimer.text = string.Format("{0:0}:{1:00}", minutes, seconds);
+
+            yield return new WaitForSeconds(1f);
+
+            cookingTime--;
+        }
+
+        cookingTimer.text = string.Format("{0:0}:{1:00}", 0, 0);
+        cookingAnimationState.SetAnimation(0, "success", false);
+        cookingAnimationState.AddAnimation(0, "success-idle", true, 0f);
+
+        //TODO: Popup result and reset cooking
+        cookingPopup.SetImage(currentFood.Id);
+        cookingPopup.Show();
+    }
+
+    public void UpdateCookingLimit()
+    {
+        cookingAnimationState.SetAnimation(0, "idle", true);
+
+        CheckCookingAllow();
     }
     #endregion
 
