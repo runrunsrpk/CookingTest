@@ -3,10 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
-using static System.Net.Mime.MediaTypeNames;
 
 public class UICooking : MonoBehaviour
 {
@@ -57,11 +55,21 @@ public class UICooking : MonoBehaviour
         InitListeners();
         InitMenuPage();
         InitSpine();
+
+        BackgroundRuntime.OnEnergyChanged += UpdatePlayerEnergy;
+        BackgroundRuntime.OnCookingTimerChanged += UpdateCookingTimer;
+        BackgroundRuntime.OnCookingCompleted += UpdateCookingCompleted;
+        BackgroundRuntime.Instance.CheckCookingTimer();
     }
 
     public void Hide()
     {
-        panel.SetActive(false);
+        //panel.SetActive(false);
+        BackgroundRuntime.OnEnergyChanged -= UpdatePlayerEnergy;
+        BackgroundRuntime.OnCookingTimerChanged -= UpdateCookingTimer;
+        BackgroundRuntime.OnCookingCompleted -= UpdateCookingCompleted;
+
+        Destroy(gameObject);
     }
 
     private void InitPanel()
@@ -73,7 +81,7 @@ public class UICooking : MonoBehaviour
         currentPage = 1;
         maxPage = GetMaxPage(currentFoodMenus.Count);
 
-        UpdateEnergy(PlayerManager.PlayerData.PlayerEnergy.CurrentEnergy, PlayerManager.PlayerData.PlayerEnergy.MaxEnergy);
+        UpdatePlayerEnergy();
     }
 
     private void InitListeners()
@@ -298,6 +306,11 @@ public class UICooking : MonoBehaviour
         energyText.text = $"{current}/{max}";
     }
 
+    private void UpdatePlayerEnergy()
+    {
+        UpdateEnergy(PlayerManager.PlayerData.PlayerEnergy.CurrentEnergy, PlayerManager.PlayerData.PlayerEnergy.MaxEnergy);
+    }
+
     private bool IsEnergyEnough()
     {
         return PlayerManager.PlayerData.PlayerEnergy.CurrentEnergy >= 10;
@@ -305,9 +318,8 @@ public class UICooking : MonoBehaviour
 
     private void ReduecPlayerEnergy()
     {
-        int energy = PlayerManager.PlayerData.PlayerEnergy.CurrentEnergy - 10;
-        PlayerManager.PlayerData.PlayerEnergy.CurrentEnergy = energy;
-        UpdateEnergy(energy, PlayerManager.PlayerData.PlayerEnergy.MaxEnergy);
+        PlayerManager.PlayerData.PlayerEnergy.CurrentEnergy -= 10;
+        UpdatePlayerEnergy();
     }
 
     private void ReducePlayerItems()
@@ -358,6 +370,40 @@ public class UICooking : MonoBehaviour
         cookingBtn.interactable = isAllow;
     }
 
+    private void SetCookingTimer(string text)
+    {
+        cookingTimer.text = text;
+    }
+
+    private void UpdateCookingTimer(int timer)
+    {
+        if(timer > 0)
+        {
+            int minutes = Mathf.FloorToInt(timer / 60);
+            int seconds = Mathf.FloorToInt(timer % 60);
+            SetCookingTimer(string.Format("{0:0}:{1:00}", minutes, seconds));
+            return;
+        }
+
+        SetCookingTimer(string.Format("{0:0}:{1:00}", 0, 0));
+
+        cookingAnimationState.SetAnimation(0, "success", false);
+        cookingAnimationState.AddAnimation(0, "success-idle", true, 0f);
+
+        //TODO: Popup result and reset cooking
+        cookingPopup.SetImage(currentFood.Id);
+        cookingPopup.Show();
+    }
+
+    private void UpdateCookingCompleted(int foodId)
+    {
+        cookingAnimationState.AddAnimation(0, "success-idle", true, 0f);
+
+        //TODO: Popup result and reset cooking
+        cookingPopup.SetImage(foodId);
+        cookingPopup.Show();
+    }
+
     private void OnClickCookingStart()
     {
         SetCookingBtn(false);
@@ -370,29 +416,8 @@ public class UICooking : MonoBehaviour
         ReducePlayerItems();
 
         //TODO: Start cooking timer
-        StartCoroutine(EnumCookingTime(currentFood.CookingTime));
-    }
-
-    private IEnumerator EnumCookingTime(int cookingTime)
-    {
-        while (cookingTime > 0)
-        {
-            int minutes = Mathf.FloorToInt(cookingTime / 60);
-            int seconds = Mathf.FloorToInt(cookingTime % 60);
-            cookingTimer.text = string.Format("{0:0}:{1:00}", minutes, seconds);
-
-            yield return new WaitForSeconds(1f);
-
-            cookingTime--;
-        }
-
-        cookingTimer.text = string.Format("{0:0}:{1:00}", 0, 0);
-        cookingAnimationState.SetAnimation(0, "success", false);
-        cookingAnimationState.AddAnimation(0, "success-idle", true, 0f);
-
-        //TODO: Popup result and reset cooking
-        cookingPopup.SetImage(currentFood.Id);
-        cookingPopup.Show();
+        BackgroundRuntime.Instance.StartCooking(currentFood);
+        BackgroundRuntime.Instance.CheckPlayerEnergy();
     }
 
     public void UpdateCookingLimit()

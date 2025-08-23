@@ -10,7 +10,7 @@ public class PlayerManager : MonoBehaviour
     public static PlayerData PlayerData => playerData;
     private static PlayerData playerData;
 
-    [SerializeField] private UICooking uiCooking;
+    private UICooking uiCooking;
 
     private void Awake()
     {
@@ -24,6 +24,9 @@ public class PlayerManager : MonoBehaviour
     {
         playerData = GetComponent<PlayerData>();
 
+        uiCooking = UILoader.Instance.LoadUI("UICooking/UICooking").GetComponent<UICooking>();
+        uiCooking.Show();
+
         Debug.Log($"PlayerEnergy: {playerData.PlayerEnergy.CurrentEnergy}/{playerData.PlayerEnergy.MaxEnergy}");
         Debug.Log($"PlayerInventory: {playerData.PlayerInventory.Items.Count}");
     }
@@ -32,6 +35,10 @@ public class PlayerManager : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.C))
         {
+            if (uiCooking != null)
+                return;
+
+            uiCooking = UILoader.Instance.LoadUI("UICooking/UICooking").GetComponent<UICooking>();
             uiCooking.Show();
         }
     }
