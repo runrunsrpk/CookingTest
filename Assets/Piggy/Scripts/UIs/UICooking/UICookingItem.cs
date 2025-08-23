@@ -56,7 +56,7 @@ public class UICookingItem : MonoBehaviour
         PlayerItem playerItem = PlayerManager.Instance.GetPlayerItemById(itemData.Id);
         playerItemAmount = (playerItem == null) ? 0 : playerItem.ItemAmount;
 
-        if (playerItemAmount == 0)
+        if (playerItemAmount < itemRequire)
         {
             itemAmountText.text = $"<color=#FF0000>{playerItemAmount}</color>/{itemRequire}";
         }

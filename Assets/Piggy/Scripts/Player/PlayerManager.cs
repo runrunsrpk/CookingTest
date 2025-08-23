@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,6 +11,7 @@ public class PlayerManager : MonoBehaviour
     public static PlayerData PlayerData => playerData;
     private static PlayerData playerData;
 
+    //private PlayerSave playerSave;
     private UICooking uiCooking;
 
     private void Awake()
@@ -22,13 +24,16 @@ public class PlayerManager : MonoBehaviour
 
     private void Start()
     {
-        playerData = GetComponent<PlayerData>();
+        //playerSave = GetComponent<PlayerSave>();
+
+        Debug.Log($"PlayerEnergy: {playerData.PlayerEnergy.CurrentEnergy}/{playerData.PlayerEnergy.MaxEnergy}");
+        Debug.Log($"PlayerInventory: {playerData.PlayerInventory.Items.Count}");
+
+        BackgroundRuntime.Instance.UpdateTimeDiff();
 
         uiCooking = UILoader.Instance.LoadUI("UICooking/UICooking").GetComponent<UICooking>();
         uiCooking.Show();
 
-        Debug.Log($"PlayerEnergy: {playerData.PlayerEnergy.CurrentEnergy}/{playerData.PlayerEnergy.MaxEnergy}");
-        Debug.Log($"PlayerInventory: {playerData.PlayerInventory.Items.Count}");
     }
 
     private void Update()
@@ -50,7 +55,19 @@ public class PlayerManager : MonoBehaviour
 
     public void SetPlayerItemById(int id, int amount)
     {
+
         PlayerItem playerItem = GetPlayerItemById(id);
         playerItem.ItemAmount = amount;
+    }
+    
+
+    public void SetPlayerLastedActive(DateTime dateTime)
+    {
+        playerData.PlayerLastedActive = dateTime.ToString("o");
+    }
+
+    public void SetPlayerData(PlayerData data)
+    {
+        playerData = data;
     }
 }

@@ -6,6 +6,7 @@ using UnityEngine;
 public class BackgroundRuntime : MonoBehaviour
 {
     public static Action OnEnergyChanged;
+    public static Action<bool> OnCookingStarted;
     public static Action<int> OnCookingTimerChanged;
     public static Action<int> OnCookingCompleted;
 
@@ -26,14 +27,35 @@ public class BackgroundRuntime : MonoBehaviour
         }
     }
 
-    private void Start()
+    public void UpdateTimeDiff()
     {
+        UpdatePlayerEnergyDiff();
+        UpdateCookingTimerDiff();
+    }
+
+    private void UpdatePlayerEnergyDiff()
+    {
+        if (playerEnergyCoroutine != null)
+        {
+            StopCoroutine(playerEnergyCoroutine);
+            playerEnergyCoroutine = null;
+        }
+
+        int secondTimeDiff = GetSecondTimeDiff();
+        int addedEnergy = secondTimeDiff / 5;
+        PlayerManager.PlayerData.PlayerEnergy.CurrentEnergy = PlayerManager.PlayerData.PlayerEnergy.CurrentEnergy + addedEnergy;
+
+        if (PlayerManager.PlayerData.PlayerEnergy.CurrentEnergy > PlayerManager.PlayerData.PlayerEnergy.MaxEnergy)
+            PlayerManager.PlayerData.PlayerEnergy.CurrentEnergy = PlayerManager.PlayerData.PlayerEnergy.MaxEnergy;
+
         CheckPlayerEnergy();
     }
 
     public void CheckPlayerEnergy()
     {
-        if(PlayerManager.PlayerData.PlayerEnergy.CurrentEnergy < PlayerManager.PlayerData.PlayerEnergy.MaxEnergy)
+        OnEnergyChanged?.Invoke();
+
+        if (PlayerManager.PlayerData.PlayerEnergy.CurrentEnergy < PlayerManager.PlayerData.PlayerEnergy.MaxEnergy)
         {
             if(playerEnergyCoroutine == null)
             {
@@ -62,12 +84,23 @@ public class BackgroundRuntime : MonoBehaviour
     {
         if(cookingTimer > 0 && cookingCoroutine != null)
         {
+            OnCookingStarted?.Invoke(true);
             OnCookingTimerChanged?.Invoke(cookingTimer);
         }
         else if(cookedFood != null)
         {
+            OnCookingTimerChanged?.Invoke(0);
             OnCookingCompleted?.Invoke(cookedFood.Id);
             cookedFood = null;
+
+            PlayerManager.PlayerData.PlayerCooking.FoodId = 0;
+            PlayerManager.PlayerData.PlayerCooking.FoodCookingTimer = 0;
+
+            if (cookingCoroutine != null)
+            {
+                StopCoroutine (cookingCoroutine);
+                cookingCoroutine = null;
+            }
         }
     }
 
@@ -77,6 +110,23 @@ public class BackgroundRuntime : MonoBehaviour
         {
             cookingFood = food;
             cookingTimer = food.CookingTime;
+            PlayerManager.PlayerData.PlayerCooking.FoodId = food.Id;
+            PlayerManager.PlayerData.PlayerCooking.FoodCookingTimer = cookingTimer;
+            cookingCoroutine = EnumCooking(cookingTimer);
+            StartCoroutine(cookingCoroutine);
+        }
+    }
+
+    private void ContinueCooking(FoodSO food, int remainingTime)
+    {
+        cookingFood = food;
+        cookingTimer = remainingTime;
+        OnCookingTimerChanged?.Invoke(remainingTime);
+        PlayerManager.PlayerData.PlayerCooking.FoodId = food.Id;
+        PlayerManager.PlayerData.PlayerCooking.FoodCookingTimer = remainingTime;
+
+        if (cookingCoroutine == null)
+        {
             cookingCoroutine = EnumCooking(cookingTimer);
             StartCoroutine(cookingCoroutine);
         }
@@ -90,6 +140,7 @@ public class BackgroundRuntime : MonoBehaviour
             yield return new WaitForSecondsRealtime(1f);
             timer--;
             cookingTimer = timer;
+            PlayerManager.PlayerData.PlayerCooking.FoodCookingTimer = timer;
         }
 
         GameObject loadedUI = UILoader.Instance.GetLoadedUI();
@@ -98,7 +149,6 @@ public class BackgroundRuntime : MonoBehaviour
         {
             uiCooking = loadedUI.GetComponent<UICooking>();
         }
-        
 
         if (uiCooking != null)
         {
@@ -112,6 +162,55 @@ public class BackgroundRuntime : MonoBehaviour
         StopCoroutine(cookingCoroutine);
         cookingCoroutine = null;
         cookingFood = null;
+    }
+
+    private void UpdateCookingTimerDiff()
+    {
+        if (cookingCoroutine != null)
+        {
+            StopCoroutine(cookingCoroutine);
+            cookingCoroutine = null;
+        }
+
+        // Player Cooking
+        int foodId = PlayerManager.PlayerData.PlayerCooking.FoodId;
+        if (foodId > 0)
+        {
+            int secondTimeDiff = GetSecondTimeDiff();
+            int remainingTime = PlayerManager.PlayerData.PlayerCooking.FoodCookingTimer - secondTimeDiff;
+            
+            FoodSO food = Database.GetFood(foodId);
+
+            if (remainingTime <= 0)
+            {
+                cookingTimer = 0;
+                cookingFood = null;
+                cookedFood = food;
+
+                CheckCookingTimer();
+            }
+            else
+            {
+                ContinueCooking(food, remainingTime);
+            }
+
+        }
+    }
+    #endregion
+
+    #region Helper
+    private int GetSecondTimeDiff()
+    {
+        DateTime startTime = DateTime.Parse(PlayerManager.PlayerData.PlayerLastedActive);
+        DateTime endTime = DateTime.Now;
+
+        // Calculate the TimeSpan difference
+        TimeSpan timeDifference = endTime - startTime;
+
+        // Get the total difference in seconds
+        int diffInSeconds = (int)timeDifference.TotalSeconds;
+
+        return diffInSeconds;
     }
     #endregion
 }

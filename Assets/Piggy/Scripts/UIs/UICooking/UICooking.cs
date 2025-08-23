@@ -45,27 +45,31 @@ public class UICooking : MonoBehaviour
     private List<FoodSO> currentFoodMenus;
     private FoodSO currentFood;
 
+    private bool isOnCooking;
+
     public void Show()
     {
-        Debug.Log("Show Cooking Panel");
-
         panel.SetActive(true);
 
         InitPanel();
         InitListeners();
         InitMenuPage();
-        InitSpine();
 
         BackgroundRuntime.OnEnergyChanged += UpdatePlayerEnergy;
+        BackgroundRuntime.OnCookingStarted += UpdateCookingStart;
         BackgroundRuntime.OnCookingTimerChanged += UpdateCookingTimer;
         BackgroundRuntime.OnCookingCompleted += UpdateCookingCompleted;
         BackgroundRuntime.Instance.CheckCookingTimer();
+
+        InitSpine();
+        InitBackgroundData();
     }
 
     public void Hide()
     {
         //panel.SetActive(false);
         BackgroundRuntime.OnEnergyChanged -= UpdatePlayerEnergy;
+        BackgroundRuntime.OnCookingStarted -= UpdateCookingStart;
         BackgroundRuntime.OnCookingTimerChanged -= UpdateCookingTimer;
         BackgroundRuntime.OnCookingCompleted -= UpdateCookingCompleted;
 
@@ -77,6 +81,8 @@ public class UICooking : MonoBehaviour
         foodMenus = Database.GetAllFoods();
         foodMenus.RemoveAt(0);
         currentFoodMenus = foodMenus;
+
+        cookingAnimationState = cookingAnimation.AnimationState;
 
         currentPage = 1;
         maxPage = GetMaxPage(currentFoodMenus.Count);
@@ -99,8 +105,20 @@ public class UICooking : MonoBehaviour
 
     private void InitSpine()
     {
-        cookingAnimationState = cookingAnimation.AnimationState;
-        cookingAnimationState.SetAnimation(0, "idle", true);
+        if(isOnCooking)
+            cookingAnimationState.SetAnimation(0, "idle-boiled", true);
+        else
+            cookingAnimationState.SetAnimation(0, "idle", true);
+    }
+
+    private void InitBackgroundData()
+    {
+        if (isOnCooking)
+        {
+            FoodSO food = Database.GetFood(PlayerManager.PlayerData.PlayerCooking.FoodId);
+            currentFood = food;
+
+        }
     }
 
     #region CookingPanel
@@ -117,7 +135,6 @@ public class UICooking : MonoBehaviour
         int divPage = menuAmount % 4;
         if (divPage > 0) maxPage += 1;
 
-        Debug.Log($"MaxPage: {maxPage}");
         return maxPage;
     }
 
@@ -309,6 +326,7 @@ public class UICooking : MonoBehaviour
     private void UpdatePlayerEnergy()
     {
         UpdateEnergy(PlayerManager.PlayerData.PlayerEnergy.CurrentEnergy, PlayerManager.PlayerData.PlayerEnergy.MaxEnergy);
+        CheckCookingAllow();
     }
 
     private bool IsEnergyEnough()
@@ -343,6 +361,12 @@ public class UICooking : MonoBehaviour
     private void CheckCookingAllow()
     {
         if (!IsEnergyEnough())
+        {
+            SetCookingBtn(false);
+            return;
+        }
+
+        if(isOnCooking)
         {
             SetCookingBtn(false);
             return;
@@ -397,6 +421,8 @@ public class UICooking : MonoBehaviour
 
     private void UpdateCookingCompleted(int foodId)
     {
+        Debug.Log($"Food completed: {foodId}");
+
         cookingAnimationState.AddAnimation(0, "success-idle", true, 0f);
 
         //TODO: Popup result and reset cooking
@@ -406,7 +432,10 @@ public class UICooking : MonoBehaviour
 
     private void OnClickCookingStart()
     {
-        SetCookingBtn(false);
+        if (currentFood == null)
+            currentFood = currentFoodMenus[0];
+
+        isOnCooking = true;
 
         //TODO: Play cooking animation
         cookingAnimationState.SetAnimation(0, "idle-boiled", true);
@@ -420,8 +449,16 @@ public class UICooking : MonoBehaviour
         BackgroundRuntime.Instance.CheckPlayerEnergy();
     }
 
+
+    private void UpdateCookingStart(bool isCooking)
+    {
+        isOnCooking = isCooking;
+    }
+
     public void UpdateCookingLimit()
     {
+        currentFood = null;
+        isOnCooking = false;
         cookingAnimationState.SetAnimation(0, "idle", true);
 
         CheckCookingAllow();
